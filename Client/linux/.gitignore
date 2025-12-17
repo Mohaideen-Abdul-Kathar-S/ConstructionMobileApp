@@ -1,0 +1,45 @@
+# ==============================
+# Flutter & Dart generated files
+# ==============================
+.dart_tool/
+build/
+
+# ==============================
+# Flutter local metadata
+# ==============================
+.metadata
+
+# ==============================
+# IDE / Editor files
+# ==============================
+.vscode/
+.idea/
+*.iml
+
+# ==============================
+# OS generated files
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Android generated files
+# ==============================
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# ==============================
+# iOS generated files
+# ==============================
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+
+# ==============================
+# Logs
+# ==============================
+*.log
