@@ -7,10 +7,12 @@ dotenv.config();
 
 export const userLogin = async (req, res) => {
     try{
+        console.log("login data");
 
         const {Username, Password} = req.body;
 
         const user = await Users.findOne({Username, Password});
+        console.log("user found:", user);
 
         if(user){
             res.status(200).json({message: "Login Successful", user});

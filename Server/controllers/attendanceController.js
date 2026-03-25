@@ -5,17 +5,18 @@ import Salary from "../models/Salary.js";
 export const initializeAttendance = async (req, res) => {
     try{
         const { dateTime } = req.params;
+        console.log("Initializing attendance for dateTime:", dateTime);
 
         const dt = new Date(dateTime);
 
         const date = dt.toISOString().split("T")[0];
 
-        const time = dt.toISOString().split("T")[1].slice(0, 5);
-
 let session = "";
 
-const [hours, minutes] = time.split(":").map(Number);
+const hours = dt.getHours();
+const minutes = dt.getMinutes();
 const totalMinutes = hours * 60 + minutes;
+
 
 if (totalMinutes >= 450 && totalMinutes <= 720) {
     session = "FN";
@@ -24,7 +25,7 @@ else if (totalMinutes >= 721 && totalMinutes <= 990) {
     session = "AN";
 }
 else {
-    session = "OUT_OF_SESSION"; 
+    session = "CLOSED"; 
 }
 
 const employees = (await Employees.find({})).map(emp => emp.Username);
@@ -51,7 +52,7 @@ if (session === "AN") {
     }
 }
 
-if (session === "OUT_OF_SESSION") {
+if (session === "CLOSED") {
     const anAttendance = await Attendance.findOne({
         AttendanceDate: date,
         Shift: "AN"
@@ -68,7 +69,7 @@ if (session === "OUT_OF_SESSION") {
     }
 }
 
-if (!existingAttendance && session !== "OUT_OF_SESSION") {
+if (!existingAttendance && session !== "CLOSED") {
     const newAttendance = new Attendance({
         AttendanceDate: date,
         Shift: session,
@@ -86,26 +87,36 @@ return res.status(200).json({ Date:date, Shift:session });
 }
 
 export const getAttendance = async (req, res) => {
-    try{
+    try {
         const { date, shift } = req.params;
-        const attendanceRecord = await Attendance.findOne({AttendanceDate:date,shift});
-        const employees = (await Employees.find({})).map(emp => ({Username: emp.Username, Type: emp.Type}));
-        const A = employees.filter(emp => emp.Type === "A");
-        const B = employees.filter(emp => emp.Type === "B");
-        const C = employees.filter(emp => emp.Type === "C");
-        const TypeList = {A, B, C};
-        if(attendanceRecord){
-            res.status(200).json({attendance: attendanceRecord, TypeList});
+
+        const attendanceRecord = await Attendance.findOne({
+            AttendanceDate: new Date(date),
+            Shift: shift
+        });
+
+        const employees = (await Employees.find({}))
+            .map(emp => ({ Username: emp.Username, Type: emp.Type }));
+
+       
+        
+
+        if (attendanceRecord) {
+            res.status(200).json({ attendance: attendanceRecord, TypeList: employees });
+        } else {
+            res.status(404).json({ message: "Attendance not found" });
+
         }
 
 
-    }catch(error){
-        res.status(500).json({message: "Internal Server Error", error});
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error });
     }
-}
+};
 
 export const markAttendance = async (req, res) => {
     try{
+        console.log("Marking attendance with data:", req.body);
         const { AttendanceDate, Shift, PresentList, AbsentList } = req.body;
         const attendanceRecord = await Attendance.findOneAndUpdate(
             {AttendanceDate, Shift},
@@ -124,20 +135,170 @@ export const markAttendance = async (req, res) => {
     }
 }
 
+
 export const viewAttendance = async (req, res) => {
-    try{
+    try {
         const { date, shift } = req.params;
-        const attendanceRecord = await Attendance.findOne({AttendanceDate:date,shift});
-        const prevAttendanceRecords = await Attendance.find({AttendanceDate:{$lt:date}}).sort({AttendanceDate:-1}).limit(10);
-        if(attendanceRecord){
-            res.status(200).json({attendance: attendanceRecord, previousAttendances: prevAttendanceRecords});
-        } else {
-            res.status(404).json({message: "Attendance record not found"});
-        }
-    }catch(error){
-        res.status(500).json({message: "Internal Server Error", error});
+
+        const start = new Date(date);
+        const end = new Date(date);
+        end.setDate(end.getDate() + 1);
+
+        const attendanceRecord = await Attendance.findOne({
+            AttendanceDate: { $gte: start, $lt: end },
+            Shift: shift
+        });
+
+        const prevAttendanceRecords = await Attendance.find({
+            AttendanceDate: { $lt: start }
+        }).sort({ AttendanceDate: -1 }).limit(10);
+
+        let lsAN = [];
+let lsFN = [];
+
+prevAttendanceRecords.forEach(record => {
+
+    record.AttendanceDate = record.AttendanceDate.toISOString().split("T")[0];
+
+    const present = record.PresentList.length;
+    const absent = record.AbsentList.length;
+
+    if (record.Shift === "AN") {
+
+        lsAN.push({
+            AttendanceDate: record.AttendanceDate,
+            Shift: record.Shift,
+            PresentANCount: present,
+            AbsentANCount: absent
+        });
+
+    } else {
+
+        lsFN.push({
+            AttendanceDate: record.AttendanceDate,
+            Shift: record.Shift,
+            PresentFNCount: present,
+            AbsentFNCount: absent
+        });
+
     }
-}
+});
+let merged = {};
+
+prevAttendanceRecords.forEach(record => {
+
+    const date = record.AttendanceDate.toISOString().split("T")[0];
+    const present = record.PresentList.length;
+    const absent = record.AbsentList.length;
+
+    // create date object if not exists
+    if (!merged[date]) {
+        merged[date] = {
+            AttendanceDate: date,
+            PresentFNCount: 0,
+            AbsentFNCount: 0,
+            PresentANCount: 0,
+            AbsentANCount: 0
+        };
+    }
+
+    if (record.Shift === "FN") {
+        merged[date].PresentFNCount = present;
+        merged[date].AbsentFNCount = absent;
+    } 
+    else if (record.Shift === "AN") {
+        merged[date].PresentANCount = present;
+        merged[date].AbsentANCount = absent;
+    }
+
+});
+
+merged = Object.values(merged);
+
+console.log("Merged attendance:", merged);
+
+        if (attendanceRecord) {
+            res.status(200).json({
+                attendance: {"present": attendanceRecord.PresentList.length, "absent": attendanceRecord.AbsentList.length},
+                previousAttendances: merged
+            });
+        } else if(merged.length > 0){
+            res.status(200).json({
+                
+                previousAttendances: merged
+            });
+        }
+            else {
+            res.status(404).json({ message: "Attendance record not found" });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error });
+    }
+};
+
+export const viewAttendancebyDateAndShift = async (req, res) => {
+    try {
+
+        const { date, shift } = req.params;
+
+        console.log("Viewing attendance for 123 date:", date, "and shift:", shift);
+
+        const attendanceRecord = await Attendance.findOne({
+            AttendanceDate: new Date(date),
+            Shift: shift
+        });
+
+        if (!attendanceRecord) {
+            return res.status(404).json({ message: "Attendance record not found" });
+        }
+
+        const presentList = attendanceRecord.PresentList;
+        const absentList = attendanceRecord.AbsentList;
+
+        const allUsernames = [...presentList, ...absentList];
+
+        const employees = await Employees.find({
+            Username: { $in: allUsernames }
+        });
+
+        let groupedTypes = {};
+
+        employees.forEach(emp => {
+
+            const isPresent = presentList.includes(emp.Username);
+
+            const data = {
+                Username: emp.Username,
+                Name: emp.Name,
+                isPresent
+            };
+
+            // create array if type not exists
+            if (!groupedTypes[emp.Type]) {
+                groupedTypes[emp.Type] = [];
+            }
+
+            groupedTypes[emp.Type].push(data);
+
+        });
+
+        console.log("Grouped attendance by type:", {
+            ...groupedTypes,
+            presentCount: presentList.length,
+            absentCount: absentList.length
+        });
+
+        res.status(200).json({
+            ...groupedTypes,
+            presentCount: presentList.length,
+            absentCount: absentList.length
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error", error });
+    }
+};
 
 export const getAttendanceByDate = async (req, res) => {
     try{
@@ -198,12 +359,14 @@ export const getAttendanceByEmployeeWithRange = async (req, res) => {
 export const getShiftCount = async (req, res) => {
     try{
         const {Username, StartDate, EndDate} = req.body;
+
         if(!Username || !StartDate){
             return res.status(400).json({message: "Username and StartDate are required"});
         }
         if(!EndDate){
         EndDate=StartDate;
         }
+        console.log("Getting shift count for Username:", Username, "StartDate:", StartDate, "EndDate:", EndDate);
 
 
 const oldSalaryReport = await Salary.find({

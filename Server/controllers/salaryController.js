@@ -119,6 +119,7 @@ export const deleteSalaryReport = async (req, res) => {
 export const getAllSalaryReportByRange = async (req, res) => {
     try{
       const {sdate, edate} = req.params;
+      console.log("Received dates:", sdate, edate); 
       const startDate = new Date(sdate);
     startDate.setHours(0, 0, 0, 0);
 
@@ -131,6 +132,7 @@ export const getAllSalaryReportByRange = async (req, res) => {
         
       }
       else{
+        console.log("Report in range:", reportInRange);
        res.status(200).json(reportInRange);
       }
 

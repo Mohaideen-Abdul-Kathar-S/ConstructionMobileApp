@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<script type="module"
+src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js">
+</script>
+
+<style>
+body{
+  margin:0;
+  background:black;
+  overflow:hidden;
+}
+
+model-viewer{
+  width:100vw;
+  height:100vh;
+}
+
+/* Navigation arrows */
+
+.nav-btn{
+  position:fixed;
+  top:50%;
+  transform:translateY(-50%);
+  width:55px;
+  height:55px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(6px);
+  color:white;
+  font-size:26px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.nav-btn:hover{
+  background:rgba(255,255,255,0.35);
+}
+
+#prev-btn{
+  left:15px;
+}
+
+#next-btn{
+  right:15px;
+}
+
+/* AR button */
+
+#my-ar-button{
+  position:fixed;
+  bottom:25px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:14px 26px;
+  background:#007bff;
+  color:white;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  font-weight:600;
+  box-shadow:0 4px 12px rgba(0,0,0,0.4);
+}
+</style>
+</head>
+
+<body>
+
+<model-viewer
+id="ar-model"
+camera-controls
+auto-rotate
+ar
+ar-modes="scene-viewer webxr quick-look"
+disable-portal>
+</model-viewer>
+
+<!-- Navigation -->
+<button id="prev-btn" class="nav-btn">&#8592;</button>
+<button id="next-btn" class="nav-btn">&#8594;</button>
+
+<!-- AR Button -->
+<button id="my-ar-button">Open in AR</button>
+
+<script>
+
+const modelViewer=document.getElementById('ar-model');
+
+let models=[];
+let currentIndex=0;
+
+window.setModels=function(modelList){
+
+  models=modelList;
+  currentIndex=0;
+
+  if(models.length>0){
+    modelViewer.src=models[0];
+  }
+}
+
+/* NEXT MODEL */
+
+document.getElementById("next-btn").onclick=()=>{
+
+  if(models.length===0) return;
+
+  currentIndex++;
+
+  if(currentIndex>=models.length){
+    currentIndex=0;
+  }
+
+  modelViewer.src=models[currentIndex];
+};
+
+/* PREVIOUS MODEL */
+
+document.getElementById("prev-btn").onclick=()=>{
+
+  if(models.length===0) return;
+
+  currentIndex--;
+
+  if(currentIndex<0){
+    currentIndex=models.length-1;
+  }
+
+  modelViewer.src=models[currentIndex];
+};
+
+/* AR LAUNCH */
+
+document.getElementById('my-ar-button').onclick=()=>{
+
+  const src=modelViewer.src;
+
+  if(!src){
+    alert("Model not loaded");
+    return;
+  }
+
+  FlutterAR.postMessage(src);
+};
+
+</script>
+
+</body>
+</html>

@@ -85,7 +85,42 @@ export const updateEmployee = async (req, res) => {
     }
 }
 
+export const getEmployees = async (req, res) => {
+    try{
+        
+     
 
+        const employeeList = await Employees.find({}, {'Name': 1, 'Username': 1, 'Type': 1});
+
+        if(employeeList.length === 0){
+            return res.status(404).json({ message: "Employee not found" });
+        }   
+        res.status(200).json({ employees: employeeList });
+
+    }catch(error){
+        res.status(500).json({message: "Internal Server Error", error});
+    }
+}
+
+
+export const getEmployeeByUsername = async (req, res) => {
+    try{
+        const { username } = req.params;
+     
+
+        const employee = await Employees.find({Username: username});
+        console.log("Employee found:", employee);
+       
+
+        if(!employee){
+            return res.status(404).json({ message: "Employee not found" });
+        }   
+        res.status(200).json({ employee: employee });
+
+    }catch(error){
+        res.status(500).json({message: "Internal Server Error", error});
+    }
+}
 
 export const getEmployeeByName = async (req, res) => {
     try{
@@ -116,7 +151,7 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findOneAndUpdate(
+    const employee = await Employees.findOneAndUpdate(
       { Username },
       { $set: { Profile } },
       { new: true }
@@ -140,3 +175,13 @@ export const updateProfile = async (req, res) => {
     });
   }
 };
+
+
+export const getAllEmployee = async (req, res) => {
+    try{
+        const employeeList = await Employees.find({},{Username: 1, Name: 1, Type: 1, Salary: 1});
+        res.status(200).json({ employees: employeeList });
+    }catch(error){
+        res.status(500).json({message: "Internal Server Error", error});
+    }
+}
